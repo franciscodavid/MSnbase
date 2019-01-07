@@ -261,8 +261,8 @@ trimMz_Spectrum <- function(x, mzlim, msLevel., updatePeaksCount = TRUE) {
     }
     mzmin <- min(mzlim)
     mzmax <- max(mzlim)
-    sel <- (x@mz >= mzmin) & (x@mz <= mzmax)
-    if (sum(sel) == 0) {
+    sel <- which((x@mz >= mzmin) & (x@mz <= mzmax))
+    if (!length(sel)) {
         msg <- paste0("No data points between ", mzmin,
                       " and ", mzmax,
                       " for spectrum with acquisition number ",
@@ -491,10 +491,10 @@ validSpectrum <- function(object) {
 #' - mergedResultScanNum
 #' - mergedResultStartScanNum
 #' - mergedResultEndScanNum
-#' 
+#'
 #' @param x `Spectrum` object.
 #'
-#' @return A named `numeric` with the following fields:
+#' @return A `data.frame` with the following columns:
 #' - acquisitionNum
 #' - msLevel
 #' - polarity
@@ -515,44 +515,51 @@ validSpectrum <- function(object) {
 #' - mergedResultStartScanNum
 #' - mergedResultEndScanNum
 #' - injectionTime
+#' - filterString
+#' - spectrumId
 #' - centroided
-#' 
+#' - ionMobilityDriftTime
+#'
 #' @author Johannes Rainer
 #'
 #' @md
 #'
 #' @noRd
 .spectrum_header <- function(x) {
-    res <- c(acquisitionNum = acquisitionNum(x),
-             msLevel = msLevel(x),
-             polarity = polarity(x),
-             peaksCount = peaksCount(x),
-             totIonCurrent = tic(x),
-             retentionTime = rtime(x),
-             basePeakMZ = mz(x)[which.max(intensity(x))][1],
-             basePeakIntensity = max(intensity(x)),
-             collisionEnergy = 0,
-             ionisationEnergy = 0,      # How to get that?
-             lowMZ = min(mz(x)),
-             highMZ = max(mz(x)),
-             precursorScanNum = 0,
-             precursorMZ = 0,
-             precursorCharge = 0,
-             precursorIntensity = 0,
-             mergedScan = 0,
-             mergedResultScanNum = 0,   # ???
-             mergedResultStartScanNum = 0, # ???
-             mergedResultEndScanNum = 0,   # ???
-             injectionTime = 0,            # Don't have that
-             centroided = centroided(x)
-             )
+    res <- data.frame(acquisitionNum = acquisitionNum(x),
+                      msLevel = msLevel(x),
+                      polarity = polarity(x),
+                      peaksCount = peaksCount(x),
+                      totIonCurrent = tic(x),
+                      retentionTime = rtime(x),
+                      basePeakMZ = mz(x)[which.max(intensity(x))][1],
+                      basePeakIntensity = max(intensity(x)),
+                      collisionEnergy = 0,
+                      ionisationEnergy = 0,      # How to get that?
+                      lowMZ = min(mz(x)),
+                      highMZ = max(mz(x)),
+                      precursorScanNum = 0,
+                      precursorMZ = 0,
+                      precursorCharge = 0,
+                      precursorIntensity = 0,
+                      mergedScan = 0,
+                      mergedResultScanNum = 0,   # ???
+                      mergedResultStartScanNum = 0, # ???
+                      mergedResultEndScanNum = 0,   # ???
+                      injectionTime = 0,            # Don't have that
+                      filterString = NA_character_,
+                      spectrumId = paste0("scan=", acquisitionNum(x)),
+                      centroided = centroided(x),
+                      ionMobilityDriftTime = NA_real_,
+                      stringsAsFactors = FALSE
+                      )
     if (msLevel(x) > 1) {
-        res["collisionEnergy"] <- collisionEnergy(x)
-        res["precursorScanNum"] <- precScanNum(x)
-        res["precursorMZ"] <- precursorMz(x)
-        res["precursorCharge"] <- precursorCharge(x)
-        res["precursorIntensity"] <- precursorIntensity(x)
-        res["mergedScan"] <- x@merged
+        res$collisionEnergy <- collisionEnergy(x)
+        res$precursorScanNum <- precScanNum(x)
+        res$precursorMZ <- precursorMz(x)
+        res$precursorCharge <- precursorCharge(x)
+        res$precursorIntensity <- precursorIntensity(x)
+        res$mergedScan <- x@merged
     }
     res
 }
@@ -573,10 +580,10 @@ validSpectrum <- function(object) {
 #'     peak that should be considered in the weighted mean calculation.
 #'
 #' @param ... Currently not used.
-#' 
+#'
 #' @return A `matrix` with columns `"mz"` and `"intensity"`
 #'     with the m/z and intensity values of the refined peaks.
-#' 
+#'
 #' @author Johannes Rainer
 #'
 #' @noRd
@@ -599,7 +606,7 @@ validSpectrum <- function(object) {
 #' mzs_2 <- kNeighbors(mz = mzs, peakIdx = peak_idx, intensity = ints, k = 2)
 #' points(mzs_2[, 1], mzs_2[, 2], col = "red", type = "h")
 #'
-#' ## Second example 
+#' ## Second example
 #' ints <- c(5, 3, 2, 3, 1, 2, 4, 6, 8, 11, 4, 7, 5, 2, 1, 0, 1, 0, 1, 1, 1, 0)
 #' mzs <- 1:length(ints)
 #'
@@ -653,13 +660,13 @@ kNeighbours <- kNeighbors
 #' @param stopAtTwo `logical(1)` indicating whether the peak descending
 #'     should only stop if two consecutive measurements with increasing (or
 #'     same) signal are encountered or already at the first (default).
-#' 
+#'
 #' @author Johannes Rainer
 #'
 #' @md
 #'
 #' @noRd
-#' 
+#'
 #' @examples
 #' ints <- c(5, 8, 12, 7, 4, 9, 15, 16, 11, 8, 3, 2, 3, 9, 12, 14, 13, 8, 3)
 #' mzs <- 1:length(ints)
@@ -677,7 +684,7 @@ kNeighbours <- kNeighbors
 #' pk_1 <- c(1, 2, 3, 4, 5)
 #' mzs_1[1, 1] == weighted.mean(mzs[pk_1], ints[pk_1])
 #'
-#' ## Second example 
+#' ## Second example
 #' ints <- c(5, 3, 2, 3, 1, 2, 4, 6, 8, 11, 4, 7, 5, 2, 1, 0, 1, 4, 1, 1, 1, 0)
 #' mzs <- 1:length(ints)
 #'
@@ -700,7 +707,7 @@ kNeighbours <- kNeighbors
 #' pk_idx <- c(3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16)
 #' mzs_2[1, 1] == weighted.mean(mzs[pk_idx], ints[pk_idx])
 #'
-#' 
+#'
 #' ## Include "missing" measurements.
 #' ints <- ints[-9]
 #' mzs <- mzs[-9]
@@ -776,7 +783,7 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #' @return `list` of `Spectrum` objects, same length than `x`, but each
 #'     `Spectrum` containing the intensity and m/z values from multiple
 #'     neighboring spectra.
-#' 
+#'
 #' @author Johannes Rainer
 #'
 #' @noRd
@@ -800,15 +807,34 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
     res
 }
 
-#' @title Combine profile-mode spectra signals
+#' @title Combine a list of spectra to a single spectrum
 #'
 #' @description
-#' 
-#' Combine signals from profile-mode spectra of consecutive scans into the
-#' values for the *main* spectrum. This can improve centroiding of
-#' profile-mode data by increasing the signal-to-noise ratio.
-#' 
+#'
+#' Combine peaks from several spectra into a single spectrum. Intensity and
+#' m/z values from the input spectra are aggregated into a single peak if
+#' the difference between their m/z values is smaller than `mzd` or smaller than
+#' `ppm` of their m/z. While `mzd` can be used to group mass peaks with a single
+#' fixed value, `ppm` allows a m/z dependent mass peak grouping. Intensity
+#' values of grouped mass peaks are aggregated with the `intensityFun`, m/z
+#' values by the mean, or intensity weighted mean if `weighted = TRUE`.
+#'
+#' @note
+#'
+#' This allows e.g. to combine profile-mode spectra of consecutive scans into
+#' the values for the *main* spectrum. This can improve centroiding of
+#' profile-mode data by increasing the signal-to-noise ratio and is used in the
+#' [combineSpectraMovingWindow()] function.
+#'
 #' @details
+#'
+#' For general merging of spectra, the `mzd` and/or `ppm` should be manually
+#' specified based on the precision of the MS instrument. Peaks from spectra
+#' with a difference in their m/z being smaller than `mzd` or smaller than
+#' `ppm` of their m/z are grouped into the same final peak.
+#'
+#'
+#' Some details for the combination of consecutive spectra of an LCMS run:
 #'
 #' The m/z values of the same ion in consecutive scans (spectra) of a LCMS run
 #' will not be identical. Assuming that this random variation is much smaller
@@ -834,22 +860,25 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #' @param x `list` of `Spectrum` objects.
 #'
 #' @param main `integer(1)` defining the *main* spectrum, i.e. the spectrum
-#'     which m/z and intensity values get replaced and is returned.
+#'     which m/z and intensity values get replaced and is returned. By default
+#'     the *first* spectrum in `x` is used.
 #'
-#' @param mzFun `function` to aggregate the m/z values per m/z group. Should be
-#'     a function or the name of a function. The function is expected to
-#'     return a `numeric(1)`. For `mzFun = "weighted.mean"` (note
-#'     that the *name* of the function is passed!) the resulting m/z is
-#'     determined as an intensity-weighted mean of spectras' m/z values.
+#' @param weighted `logical(1)` whether m/z values per m/z group should be
+#'     aggregated with an intensity-weighted mean. The default is to report
+#'     the mean m/z.
 #'
 #' @param intensityFun `function` to aggregate the intensity values per m/z
 #'     group. Should be a function or the name of a function. The function is
 #'     expected to return a `numeric(1)`.
 #'
 #' @param mzd `numeric(1)` defining the maximal m/z difference below which
-#'     values are grouped. If not provided, this value is estimated from the
-#'     distribution of differences of m/z values from the provided spectra
-#'     (see details).
+#'     mass peaks are considered to represent the same ion/mass peak.
+#'     Intensity values for such grouped mass peaks are aggregated. If not
+#'     specified this value is estimated from the distribution of differences
+#'     of m/z values from the provided spectra (see details).
+#'
+#' @param ppm `numeric(1)` allowing to perform a m/z dependent grouping of mass
+#'     peaks. See details for more information.
 #'
 #' @param timeDomain `logical(1)` whether definition of the m/z values to be
 #'     combined into one m/z is performed on m/z values
@@ -858,15 +887,26 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #'     on the time domain (see details). Note that a pre-defined `mzd` should
 #'     also be estimated on the square root of m/z values if
 #'     `timeDomain = TRUE`.
-#' 
+#'
+#' @param unionPeaks `logical(1)` whether the union of all peaks (peak groups)
+#'     from all spectra are reported or only peak groups that contain peaks
+#'     that are present in the *main* spectrum (defined by `main`). The default
+#'     is to report the union of peaks from all spectra.
+#'
+#' @param ... additional parameters that are passed to `intensityFun`.
+#'
 #' @return
 #'
 #' `Spectrum` with m/z and intensity values representing the aggregated values
-#' across the provided spectra. The returned spectrum contains the same number
-#' of m/z and intensity pairs than the spectrum with index `main` in `x`, also
-#' all other related information is taken from this spectrum.
+#' across the provided spectra. The returned spectrum contains the union of
+#' all peaks from all spectra (if `unionPeaks = TRUE`), or the same number of
+#' m/z and intensity pairs than the spectrum with index `main` in `x` (if
+#' `unionPeaks = FALSE`. All other spectrum data (such as retention time etc)
+#' is taken from the *main* spectrum.
 #'
 #' @author Johannes Rainer, Sigurdur Smarason
+#'
+#' @family spectra combination functions
 #'
 #' @seealso
 #'
@@ -875,10 +915,10 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #'
 #' [estimateMzResolution()] for a function estimating the m/z resolution of
 #' a spectrum.
-#' 
+#'
 #' [combineSpectraMovingWindow()] for the function to combine consecutive
 #' spectra of an `MSnExp` object using a moving window approach.
-#' 
+#'
 #' @md
 #'
 #' @examples
@@ -904,7 +944,7 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #'     intensity = ints3)
 #'
 #' ## Combine the spectra
-#' sp_agg <- combineSpectra(list(sp1, sp2, sp3))
+#' sp_agg <- meanMzInts(list(sp1, sp2, sp3))
 #'
 #' ## Plot the spectra before and after combining
 #' par(mfrow = c(2, 1), mar = c(4.3, 4, 1, 1))
@@ -913,11 +953,13 @@ descendPeak <- function(mz, intensity, peakIdx = NULL, signalPercentage = 33,
 #' points(mz(sp3), intensity(sp3), type = "h", col = "blue")
 #' plot(mz(sp_agg), intensity(sp_agg), xlim = range(mzs[5:25]), type = "h",
 #'     col = "black")
-combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
-                           main = floor(length(x) / 2L) + 1L, mzd,
-                           timeDomain = TRUE) {
+meanMzInts <- function(x, ..., intensityFun = base::mean, weighted = FALSE,
+                       main = 1L, mzd, ppm = 0, timeDomain = FALSE,
+                       unionPeaks = TRUE) {
     if (length(unique(unlist(lapply(x, function(z) z@msLevel)))) != 1)
         stop("Can only combine spectra with the same MS level")
+    if (main > length(x) || main < 1)
+        stop("'main' should be an integer between 1 and ", length(x))
     mzs <- lapply(x, function(z) z@mz)
     mzs_lens <- base::lengths(mzs)
     mzs <- unlist(mzs, use.names = FALSE)
@@ -926,22 +968,26 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
     if (timeDomain)
         mz_groups <- .group_mz_values(sqrt(mzs), mzd = mzd)
     else
-        mz_groups <- .group_mz_values(mzs, mzd = mzd)
+        mz_groups <- .group_mz_values(mzs, mzd = mzd, ppm = ppm)
     if (length(unique(mz_groups)) < length(x[[main]]@mz))
-        stop("Got less m/z groups than m/z values in the original spectrum. ",
-             "Most likely the data is not profile-mode LCMS data.")
-    ## Want to keep only those groups with a m/z from the main spectrum.
-    ## vectorized version from @sgibb
-    is_in_main <- rep.int(seq_along(mzs_lens), mzs_lens)[mz_order] == main
-    keep <- mz_groups %in% mz_groups[is_in_main]
-    ## Keep only values for which a m/z in main is present.
-    mz_groups <- mz_groups[keep]
-    mzs <- mzs[keep]
-    ints <- unlist(base::lapply(x, function(z) z@intensity))[mz_order][keep]
-    ## Create result.
+        warning("Got less m/z groups than m/z values in the original spectrum.",
+                " Most likely the data is not profile-mode LCMS data or ",
+                "'mzd' is too large.")
+    ints <- unlist(base::lapply(x, function(z) z@intensity),
+                   use.names = FALSE)[mz_order]
     new_sp <- x[[main]]
+    if (!unionPeaks) {
+        ## Want to keep only those groups with a m/z from the main spectrum.
+        ## vectorized version from @sgibb
+        is_in_main <- rep.int(seq_along(mzs_lens), mzs_lens)[mz_order] == main
+        keep <- mz_groups %in% mz_groups[is_in_main]
+        ## Keep only values for which a m/z in main is present.
+        mz_groups <- mz_groups[keep]
+        mzs <- mzs[keep]
+        ints <- ints[keep]
+    }
     ## Support also weighted.mean:
-    if (is.character(mzFun) && mzFun == "weighted.mean") {
+    if (weighted) {
         intsp <- split(ints, mz_groups)
         new_sp@mz <- base::mapply(split(mzs, mz_groups), intsp,
                                   FUN = function(mz_vals, w)
@@ -950,14 +996,15 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
                                   USE.NAMES = FALSE, SIMPLIFY = TRUE)
         new_sp@intensity <- base::vapply(intsp, FUN = intensityFun,
                                          FUN.VALUE = numeric(1),
-                                         USE.NAMES = FALSE)
+                                         USE.NAMES = FALSE, ...)
     } else {
-        new_sp@mz <- base::vapply(split(mzs, mz_groups), FUN = mzFun,
-                                  FUN.VALUE = numeric(1), USE.NAMES = FALSE)
+        new_sp@mz <- base::vapply(split(mzs, mz_groups), FUN = base::mean,
+                                  FUN.VALUE = numeric(1), USE.NAMES = FALSE,
+                                  ...)
         new_sp@intensity <- base::vapply(split(ints, mz_groups),
                                          FUN = intensityFun,
                                          FUN.VALUE = numeric(1),
-                                         USE.NAMES = FALSE)
+                                         USE.NAMES = FALSE, ...)
     }
     if (is.unsorted(new_sp@mz))
         stop("m/z values of combined spectrum are not ordered")
@@ -975,11 +1022,14 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
 #' @param mzd `numeric(1)` with the m/z difference below which m/z values are
 #'     grouped together. If not provided the `.estimate_mz_scattering` function
 #'     is used to estimate it.
-#' 
+#'
+#' @param ppm `numeric(1)` defining an optional ppm. `mzd` will be increased
+#'     by the ppm of the m/z to allow m/z dependent peak groups.
+#'
 #' @return `integer` of same length than `x` grouping m/z values.
 #'
 #' @noRd
-.group_mz_values <- function(x, mzd) {
+.group_mz_values <- function(x, mzd, ppm = 0) {
     mzdiff <- diff(x)
     if (missing(mzd))
         mzd <- .estimate_mz_scattering(mzdiff, TRUE)
@@ -987,7 +1037,10 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
     ## smaller than mzd
     ## nvals <- diff(c(0, which(!(mzdiff < mzd)), length(x)))
     ## rep(1:length(nvals), nvals)
-    cumsum(c(0L, mzdiff >= mzd)) + 1L
+    if (ppm > 0)
+        cumsum(c(0L, mzdiff >= (mzd + x[-length(x)] * ppm / 1e6))) + 1L
+    else
+        cumsum(c(0L, mzdiff >= mzd)) + 1L
 }
 
 #' Estimate the extent of random scattering of m/z values of the same ion in
@@ -995,7 +1048,7 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
 #' of m/z values is much smaller than the m/z resolution of the MS instrument.
 #'
 #' Assumes the data is in profile mode.
-#' 
+#'
 #' @param x Either values or differences between values.
 #'
 #' @param is_diff `logical(1)` indicating whether `x` are already differences.
@@ -1054,4 +1107,127 @@ combineSpectra <- function(x, mzFun = base::mean, intensityFun = base::mean,
     ##                           length.out = length(x)/4),
     ##           plot = FALSE)
     ## h$mids[which.max(h$counts)]
+}
+
+#' @title Combine spectra to a consensus spectrum
+#'
+#' @description
+#'
+#' `consensusSpectrum` takes a list of spectra and combines them to a
+#' consensus spectrum containing mass peaks that are present in a user
+#' definable proportion of spectra.
+#'
+#' @details
+#'
+#' Peaks from spectra with a difference of their m/z being smaller than `mzd`
+#' are grouped into the same final mass peak with their intensities being
+#' aggregated with `intensityFun`. The m/z of the final mass peaks is calculated
+#' using a intensity-weighted mean of the m/z values from the individual mass
+#' peaks. Alternatively (or in addition) it is possible to perform an m/z dependent
+#' grouping of mass peaks with parameter `ppm`: mass peaks from different spectra
+#'  with a difference in their m/z smaller than `ppm` of their m/z are grouped
+#' into the same final peak.
+#'
+#' @param x `list` of [Spectrum-class] objects (either [Spectrum1-class] or
+#'     [Spectrum2-class]).
+#'
+#' @param mzd `numeric(1)` defining the maximal m/z difference below which
+#'     mass peaks are grouped in to the same final mass peak (see details for
+#'     more information). If not provided this value is estimated from the
+#'     distribution of differences of m/z values from the spectra (see
+#'     [meanMzInts()] for more details). See also parameter `ppm` below for
+#'     the definition of an m/z dependent peak grouping.
+#'
+#' @param minProp `numeric(1)` defining the minimal proportion of spectra in
+#'     which a mass peak has to be present in order to include it in the
+#'     final consensus spectrum. Should be a number between 0 and 1 (present in
+#'     all spectra).
+#'
+#' @param intensityFun `function` to be used to define the intensity of the
+#'     aggregated peak. By default the maximum signal for a mass peak is
+#'     reported.
+#'
+#' @param ppm `numeric(1)` allowing to perform a m/z dependent grouping of mass
+#'     peaks. See details for more information.
+#'
+#' @param ... additional arguments to be passed to `intensityFun`.
+#'
+#' @md
+#'
+#' @author Johannes Rainer
+#'
+#' @family spectra combination functions
+#'
+#' @examples
+#' library(MSnbase)
+#' ## Create 3 example spectra.
+#' sp1 <- new("Spectrum2", rt = 1, precursorMz = 1.41,
+#'     mz = c(1.2, 1.5, 1.8, 3.6, 4.9, 5.0, 7.8, 8.4),
+#'     intensity = c(10, 3, 140, 14, 299, 12, 49, 20))
+#' sp2 <- new("Spectrum2", rt = 1.1, precursorMz = 1.4102,
+#'     mz = c(1.4, 1.81, 2.4, 4.91, 6.0, 7.2, 9),
+#'     intensity = c(3, 184, 8, 156, 12, 23, 10))
+#' sp3 <- new("Spectrum2", rt = 1.2, precursorMz = 1.409,
+#'     mz = c(1, 1.82, 2.2, 3, 7.0, 8),
+#'     intensity = c(8, 210, 7, 101, 17, 8))
+#' spl <- Spectra(sp1, sp2, sp3)
+#'
+#' ## Plot the spectra, each in a different color
+#' par(mfrow = c(2, 1), mar = c(4.3, 4, 1, 1))
+#' plot(mz(sp1), intensity(sp1), type = "h", col = "#ff000080", lwd = 2,
+#'     xlab = "m/z", ylab = "intensity", xlim = range(mz(spl)),
+#'     ylim = range(intensity(spl)))
+#' points(mz(sp2), intensity(sp2), type = "h", col = "#00ff0080", lwd = 2)
+#' points(mz(sp3), intensity(sp3), type = "h", col = "#0000ff80", lwd = 2)
+#'
+#' cons <- consensusSpectrum(spl, mzd = 0.02, minProp = 2/3)
+#'
+#' ## Peaks of the consensus spectrum
+#' mz(cons)
+#' intensity(cons)
+#'
+#' ## Other Spectrum data is taken from the first Spectrum in the list
+#' rtime(cons)
+#' precursorMz(cons)
+#'
+#' plot(mz(cons), intensity(cons), type = "h", xlab = "m/z", ylab = "intensity",
+#'     xlim = range(mz(spl)), ylim = range(intensity(spl)), lwd = 2)
+#'
+consensusSpectrum <- function(x, mzd, minProp = 0.5, intensityFun = base::max,
+                              ppm = 0, ...) {
+    if (!is(x, "Spectra"))
+        x <- Spectra(x)
+    if (length(unique(msLevel(x))) != 1)
+        stop("Can only combine spectra with the same MS level")
+    xnew <- x[[1]]                      # data from the first peak.
+    mzs <- mz(x)
+    mzs_lens <- base::lengths(mzs)
+    mzs <- unlist(mzs, use.names = FALSE)
+    mz_order <- base::order(mzs)
+    mzs <- mzs[mz_order]
+    ints <- unlist(intensity(x), use.names = FALSE)[mz_order]
+    keep <- which(ints > 0)
+    mzs <- mzs[keep]
+    ints <- ints[keep]
+    mz_groups <- .group_mz_values(mzs, mzd = mzd, ppm = ppm)
+    if (length(unique(mz_groups)) < sum(xnew@intensity > 0))
+        warning("Got less m/z groups than m/z groups in the first spectrum. ",
+                "Most likely `mzd` is too large.")
+    mzs <- split(mzs, mz_groups)
+    ints <- split(ints, mz_groups)
+    keep <- lengths(mzs) >= (length(x) * minProp)
+    if (any(keep)) {
+        xnew@mz <- mapply(mzs[keep], ints[keep], FUN = function(mz_vals, w)
+            stats::weighted.mean(mz_vals, w + 1, na.rm = TRUE),
+            USE.NAMES = FALSE)
+        xnew@intensity <- base::vapply(ints[keep], FUN = intensityFun,
+                                       FUN.VALUE = numeric(1),
+                                       USE.NAMES = FALSE, ...)
+    } else {
+        warning("No peak present in more than ", minProp * 100, "% of spectra.")
+        xnew@mz <- numeric()
+        xnew@intensity <- numeric()
+    }
+    xnew@peaksCount <- length(xnew@mz)
+    if (validObject(xnew)) xnew
 }

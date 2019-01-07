@@ -572,6 +572,7 @@ test_that(".bin_values works", {
 test_that("merging and expanding features", {
     data(hyperLOPIT2015)
     fv <- sort(fvarLabels(hyperLOPIT2015))
+    k <- grep("^svm", fvarLabels(hyperLOPIT2015), value = TRUE)
     hl <- mergeFeatureVars(hyperLOPIT2015, fcol = k, fcol2 = "SVM")
     n <- length(fvarLabels(hl))
     expect_identical(n, length(fv) - 2L)
@@ -582,4 +583,18 @@ test_that("merging and expanding features", {
     k <- grep("^svm", fvarLabels(hyperLOPIT2015), value = TRUE)
     k2 <- grep("^svm", fvarLabels(hl2), value = TRUE)
     expect_identical(fData(hyperLOPIT2015)[, k], fData(hl2)[, k2])
+})
+
+test_that("levelIndex works", {
+    str <- c("a", "a", "b", "a", "b", "c", "c", "b", "d", "d", "d")
+    res <- levelIndex(str, which = "middle")
+    expect_equal(res, c(a = 2, b = 5, c = 6, d = 10))
+    res <- levelIndex(factor(str, levels = c("b", "a", "c", "d")), "middle")
+    expect_equal(res, c(b = 5, a = 2, c = 6, d = 10))
+    expect_error(levelIndex(str, "a"))
+
+    res <- levelIndex(str, which = "first")
+    expect_equal(res, c(a = 1, b = 3, c = 6, d = 9))
+    res <- levelIndex(str, which = "last")
+    expect_equal(res, c(a = 4, b = 8, c = 7, d = 11))
 })

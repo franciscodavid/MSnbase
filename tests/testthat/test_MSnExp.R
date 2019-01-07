@@ -543,7 +543,8 @@ test_that("combineSpectraMovingWindow works", {
     spctrl <- spectra(od[(idx -1):(idx + 1)])
 
     od <- od[(idx - 3):(idx + 3)]
-     spctr <- combineSpectra(spctrl)
+    spctr <- meanMzInts(spctrl, timeDomain = TRUE, unionPeaks = FALSE,
+                        main = 2L)
     ## Should be different from raw ones
     expect_true(is.character(all.equal(mz(spctr), mz(od[[4]]))))
     expect_true(is.character(all.equal(intensity(spctr), intensity(od[[4]]))))
@@ -551,16 +552,18 @@ test_that("combineSpectraMovingWindow works", {
     ## Use pre-calculated mzd:
     mzd <- estimateMzScattering(od)
     ## If mzd is estimated on mz and combination on sqrt(mz) it will fail.
-    expect_error(od_comb <- combineSpectraMovingWindow(od, mzd = mzd[[4]]))
+    expect_warning(od_comb <- combineSpectraMovingWindow(
+                       od, mzd = mzd[[4]], timeDomain = TRUE))
     ## All on m/z scale
-    od_comb <- combineSpectraMovingWindow(od, mzd = mzd[[4]], timeDomain = FALSE)
+    od_comb <- combineSpectraMovingWindow(od, mzd = mzd[[4]],
+                                          timeDomain = FALSE)
     spctr_comb <- od_comb[[4]]
     expect_equal(mz(spctr_comb), mz(spctr))
     expect_equal(intensity(spctr_comb), intensity(spctr))
     
     ## Estimate on the sqrt(mz)
     mzd <- estimateMzScattering(od, timeDomain = TRUE)
-    od_comb <- combineSpectraMovingWindow(od, mzd = mzd[[4]])
+    od_comb <- combineSpectraMovingWindow(od, mzd = mzd[[4]], timeDomain = TRUE)
     spctr_comb <- od_comb[[4]]
     expect_equal(mz(spctr_comb), mz(spctr))
     expect_equal(intensity(spctr_comb), intensity(spctr))
@@ -575,7 +578,11 @@ test_that("combineSpectraMovingWindow works", {
     expect_equal(mz(spctr_comb), mz(spctr))
     expect_equal(intensity(spctr_comb), intensity(spctr))
 
-    
+    od_comb_w <- combineSpectraMovingWindow(od, weighted = TRUE)
+    spctr_w <- od_comb_w[[4]]
+    expect_true(sum(mz(spctr_comb) != mz(spctr_w)) > length(mz(spctr_w))/2)
+    expect_equal(intensity(spctr_comb), intensity(spctr_w))
+
     expect_equal(length(od), length(od_comb))
     expect_equal(peaksCount(od), peaksCount(od_comb))
 })
@@ -589,4 +596,16 @@ test_that("plotXIC_MSnExp works", {
     plotXIC_MSnExp(filterMz(filterRt(im, c(270, 280)), c(610, 615)), cex = 2)
 
     expect_error(plotXIC_MSnExp(tmt_erwinia_in_mem_ms2))
+})
+
+test_that("as,MSnExp,Spectra works", {
+    res <- as(tmt_erwinia_in_mem_ms1, "Spectra")
+    expect_equal(res@listData, spectra(tmt_erwinia_in_mem_ms1))
+    expect_true(ncol(mcols(res)) == 0)
+
+    res <- as(sciex, "Spectra")
+    expect_equal(length(res), length(sciex))
+    expect_equal(msLevel(res), msLevel(sciex))
+    expect_equal(intensity(res), intensity(sciex))
+    expect_true(ncol(mcols(res)) > 0)
 })

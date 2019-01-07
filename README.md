@@ -30,12 +30,12 @@ vignettes are available in the *Articles* tab.
 
 ## Installation
 
-To install *[MSnbase](http://bioconductor.org/packages/MSnbase)*
+To install *[MSnbase](https://bioconductor.org/packages/3.8/MSnbase)*
 
 
 ```r
-library("BiocInstaller")
-biocLite("MSnbase")
+install.packages("BiocManager")
+BiocManager::install("MSnbase")
 ```
 
 If you need the github version (not recommended unless you know what
@@ -43,7 +43,7 @@ you are doing), use
 
 
 ```r
-biocLite("lgatto/MSnbase")
+BiocManager::install("lgatto/MSnbase")
 ```
 
 ## Questions

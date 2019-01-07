@@ -203,8 +203,7 @@ makeImpuritiesMatrix <- function(x, filename, edit = TRUE) {
         ## diag(test[1:3, 4:6]) <- m[1:3, 6] ## col6: +3
         ## test <- test/100
         M <- res/100
-        rownames(M) <- colnames(M) <-
-            paste("reporter", 1:x, sep=".")
+        rownames(M) <- colnames(M) <- rownames(m)
     } else {
         if (x==4) {
             M <- matrix(c(0.929,0.059,0.002,0.000,
@@ -986,7 +985,7 @@ compareMSnSets <- function(x, y, qual = FALSE, proc = FALSE) {
 ##' @param x matrix
 ##' @param group a vector/factor of grouping
 ##' @param reorder if TRUE the rows are ordered by `sort(unique(group))`
-##' @param na.rm logical. Should missing values (including ‘NaN’) be omitted
+##' @param na.rm logical. Should missing values (including `NaN`) be omitted
 ##' @return matrix
 ##' @author Sebastian Gibb <mail@@sebastiangibb.de>
 ##' @noRd
@@ -1008,7 +1007,7 @@ rowmean <- function(x, group, reorder=FALSE, na.rm=FALSE) {
 ##' @param x matrix
 ##' @param group a vector/factor of grouping
 ##' @param reorder if TRUE the rows are ordered by `sort(unique(group))`
-##' @param na.rm logical. Should missing values (including ‘NaN’) be omitted
+##' @param na.rm logical. Should missing values (including `NaN`) be omitted
 ##' @return matrix
 ##' @author Sebastian Gibb <mail@@sebastiangibb.de>
 ##' @noRd
@@ -1297,7 +1296,7 @@ windowIndices <- function(i, hws, n) {
 #' This is a combination of the code from the former bin_Spectrum.
 #'
 #' @param x `numeric` with the values that should be binned.
-#' 
+#'
 #' @param toBin `numeric`, same length than `x`, with values to be used for the
 #'     binning.
 #'
@@ -1328,7 +1327,7 @@ windowIndices <- function(i, hws, n) {
     ## Ensure that indices are within breaks.
     idx[which(idx < 1L)] <- 1L
     idx[which(idx >= nbrks)] <- nbrks - 1L
-        
+
     ints <- double(nbrks - 1L)
     ints[unique(idx)] <- unlist(lapply(base::split(x, idx), fun),
                                 use.names = FALSE)
@@ -1342,7 +1341,7 @@ windowIndices <- function(i, hws, n) {
 #'
 #' @param rng `numeric(2)` with the range of original numeric values on which
 #'     the breaks were calculated.
-#' 
+#'
 #' @noRd
 .fix_breaks <- function(brks, rng) {
     ## Assuming breaks being sorted.
@@ -1352,7 +1351,9 @@ windowIndices <- function(i, hws, n) {
     brks
 }
 
-
+##' Helper functions to check whether raw files contain spectra or
+##' chromatograms.
+##'
 ##' @title Checks if raw data files have any spectra or chromatograms
 ##' @param files A `character()` with raw data filenames.
 ##' @return A `logical(n)` where `n == length(x)` with `TRUE` if that
@@ -1371,4 +1372,50 @@ hasSpectra <- function(files) {
 ##' @rdname hasSpectraOrChromatograms
 hasChromatograms <- function(files) {
     sapply(files, mzR:::.hasChromatograms)
+}
+
+#' @title Get the index of the particular element for each level
+#'
+#' `levelIndex` returns the index of the first, middle or last element for
+#' each level of a factor within the factor.
+#'
+#' @param x `factor` or `vector` that can be converted into a `factor`
+#'
+#' @param which `character` defining for which element the index should be
+#'     returned, can be either `"first"`, `"middle"` or `"last"`.
+#'
+#' @return `integer` same length than `levels(x)` with the index for each
+#'     level in `x`.
+#'
+#' @author Johannes Rainer
+#'
+#' @md
+#'
+#' @noRd
+#'
+#' @examples
+#'
+#' f <- factor(c("a", "a", "b", "a", "b", "c", "c", "b", "d", "d", "d"))
+#' f
+#'
+#' levelIndex(f, which = "first")
+#' levelIndex(f, which = "middle")
+#' levelIndex(f, which = "last")
+#'
+#' f <- factor(c("a", "a", "b", "a", "b", "c", "c", "b", "d", "d", "d"),
+#'     levels = c("d", "a", "c", "b"))
+#' levelIndex(f, which = "first")
+#' levelIndex(f, which = "middle")
+#' levelIndex(f, which = "last")
+levelIndex <- function(x, which = c("first", "middle", "last")) {
+    x <- as.factor(x)
+    res <- switch(match.arg(which),
+                  "first" = match(levels(x), x),
+                  "last" = length(x) - match(levels(x), rev(x)) + 1L,
+                  "middle" = vapply(levels(x), function(z) {
+                      idx <- which(x == z)
+                      idx[ceiling(length(idx) / 2L)]
+                  }, integer(1), USE.NAMES = FALSE))
+    names(res) <- levels(x)
+    res
 }

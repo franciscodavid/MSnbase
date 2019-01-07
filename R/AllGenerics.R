@@ -130,6 +130,7 @@ setGeneric("trimws", signature = "x",
     useAsDefault=.trimws.useAsDefault)
 
 setGeneric("filterMz", function (object, ...) standardGeneric("filterMz"))
+setGeneric("filterPolarity", function (object, ...) standardGeneric("filterPolarity"))
 setGeneric("filterRt", function (object, ...) standardGeneric("filterRt"))
 setGeneric("filterMsLevel", function (object, ...) standardGeneric("filterMsLevel"))
 setGeneric("filterFile", function (object, ...) standardGeneric("filterFile"))
@@ -151,3 +152,6 @@ setGeneric("productMz", function(object, ...) standardGeneric("productMz"))
 ## centroiding related
 setGeneric("estimateMzResolution", function(object, ...)
     standardGeneric("estimateMzResolution"))
+
+setGeneric("combineSpectra", function(object, ...)
+           standardGeneric("combineSpectra"))

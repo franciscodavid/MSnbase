@@ -1,7 +1,7 @@
 imputeMethods <- function()
     c("bpca","knn", "QRILC", "MLE",
       "MinDet", "MinProb", "min", "zero",
-      "mixed", "nbavg")
+      "mixed", "nbavg", "none")
 
 
 setMethod("impute", "MSnSet",
@@ -13,20 +13,26 @@ setMethod("impute", "MSnSet",
                    ...) {
               if (missing(method))
                   stop("Please specify an imputation method. ",
-                       "See '?impute' for details.")              
+                       "See '?impute' for details.")
               method <- match.arg(method,
                                   choices = imputeMethods(),
                                   several.ok = FALSE)
-              
+
               if (method %in% c("CRILC", "MinDet", "MinProb"))
                   if (!require("imputeLCMD"))
                       stop("Method ", method,
-                           "requires the imputeLCMD package.")              
-              ## 
+                           "requires the imputeLCMD package.")
+              ##
               ## imputaton methods
               ##
               if (method == "knn") {
-                  .eset <- impute.knn(exprs(object), ...)$data
+                  imp_res <- impute.knn(exprs(object), ...)
+                  .eset <- imp_res$data
+                  if (!is.null(imp_res$rng.state)) {
+                      assign(".Random.seed", imp_res$rng.state, envir=.GlobalEnv)
+                  } else {
+                      rm(".Random.seed", envir=.GlobalEnv)
+                  }
                   exprs(object) <- .eset
               } else if (method == "nbavg") {
                   message("Assuming values are ordered.")
@@ -79,10 +85,11 @@ setMethod("impute", "MSnSet",
                                                           mar, ...))
                   exprs(object)[!randna, ] <- exprs(impute(object[!randna, ],
                                                            mnar, ...))
-                  method <- paste(method, collapse = "/") ## for logging                  
-              } else { ## method == "zero"
+                  method <- paste(method, collapse = "/") ## for logging
+              } else if (method == "zero") {
                   exprs(object)[is.na(exprs(object))] <- 0
               }
+              ## else method == "none" -- do nothing
               impargs <- pairlist(...)
               object@processingData@processing <-
                   c(object@processingData@processing,
@@ -93,17 +100,12 @@ setMethod("impute", "MSnSet",
                   impargs <- paste(names(impargs), impargs, sep = "=")
                   impargs <- paste0("  Using parameter(s) ", impargs)
               } else {
-                  if (!method %in% c("min", "zero"))
+                  if (!method %in% c("min", "zero", "none"))
                       impargs <- "  Using default parameters"
               }
               object@processingData@processing <-
                   c(object@processingData@processing,
-                    impargs)            
+                    impargs)
               if (validObject(object))
-                  return(object)           
+                  return(object)
           })
-
-
-
-
-
